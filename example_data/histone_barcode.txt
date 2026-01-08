@@ -1,0 +1,16 @@
+Rep1	17
+Rep1	18
+Rep1	19
+Rep1	20
+Rep2	21
+Rep2	22
+Rep2	23
+Rep2	24
+Rep3	25
+Rep3	26
+Rep3	27
+Rep3	28
+Rep4	29
+Rep4	30
+Rep4	31
+Rep4	32
