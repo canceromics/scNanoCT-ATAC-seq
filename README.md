@@ -91,10 +91,10 @@ done
 ## 3_Peak_calling
 The third section first generates the single‑cell signal matrix:
 1. `archr_fragment_file`: converts long‑read multi‑modal signal fragments into BED files compatible with ArchR (mainly used for NGS scATAC‑seq data analysis).
-2. `create_arrow_file`: imports the signal fragments into ArchR and converts them into Arrow files for downstream analysis in R.
-<p>Next, peak calling on pseudo‑bulk data is performed:</p>
+2. `create_arrow_file`: imports the signal fragments into ArchR and converts them into Arrow files for downstream analysis in R.<p>Next, peak calling on pseudo‑bulk data is performed:</p>
 3. `pool_fragment_file`: converts long‑read multi‑modal signal fragments into BED files compatible with MACS2 and SEACR (mainly used for NGS bulk CUT&Tag and ATAC data analysis).
 4. `MACS_default` and `SEACR_call`: are used for peak calling on pseudo‑bulk CUT&Tag and ATAC signals, respectively.
+
 
 ```
 bash $root_dir/3_pipeline.sh $library $threads $root_dir
