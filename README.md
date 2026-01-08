@@ -27,10 +27,10 @@ deepTools  3.5.5
 
 
 # Inputs
-- Please ensure that the input files and information are correctly provided.
+- Please ensure that the input file paths and information are correctly provided.
 - PASS FASTQ data (QS>7) should be merged into one file and placed in the `raw_data` directory, and other files should be placed in the `root_dir` directory.
 
-| Name | Description |
+| Varible Name | Description |
 | --- | --- |
 | ONT_lib | A custom library name (e.g., test). Demultiplexing will be performed in a folder with that name.  |
 | threads | Number of cores used in the parallel analysis step. |
@@ -45,6 +45,7 @@ deepTools  3.5.5
 # Usage
 - Each directory corresponds to an analysis module. Please follow the step numbers and run them sequentially.
 - It is recommended to use a multi-core server or HPC cluster for parallel processing, as most analyses after demultiplexing are carried out per cell.
+- A detailed description of the code and softwares for analysis has been provided in the `Methods` section of our manuscript.
 
 ## 1_Data_preprocessing
 The first part of the code handles data demultiplexing and comprises four steps:
@@ -62,7 +63,7 @@ bash $root_dir/1_pipeline.sh $ONT_lib $threads $root_dir $bc_index $his_cell
 
 ## 2_Signal_extraction
 The second part of the code performs data alignment and omics signal extraction, consisting of five steps:
-1. `hg38`: indexes generation for the reference genome of human or other species.
+1. `hg38`: generates indexes for the reference genome of human or other species.
 2. `align`, `sort_index`, and `bam_rmdup`: aligns reads to the reference genome, sorts alignments by coordinate, and removes PCR duplicates, respectively.
 3. `bam2bed_fragment` and `flank_fragment`: extract alignment endpoints in genomic coordinates and assign them to distinct omics modalities based on index_list.
 4. `pool_fragment`: merges genomic fragments from all single cells for each modality to generate pseudo‑bulk omics data.
@@ -88,10 +89,174 @@ done
 
 
 ## 3_Peak_calling
+The third section first generates the single‑cell signal matrix:
+1. `archr_fragment_file`: converts long‑read multi‑modal signal fragments into BED files compatible with ArchR (mainly used for NGS scATAC‑seq data analysis).
+2. `create_arrow_file`: imports the signal fragments into ArchR and converts them into Arrow files for downstream analysis in R.
+<p>Next, peak calling on pseudo‑bulk data is performed:</p>
+3. `pool_fragment_file`: converts long‑read multi‑modal signal fragments into BED files compatible with MACS2 and SEACR (mainly used for NGS bulk CUT&Tag and ATAC data analysis).
+4. `MACS_default` and `SEACR_call`: are used for peak calling on pseudo‑bulk CUT&Tag and ATAC signals, respectively.
+
+```
+bash $root_dir/3_pipeline.sh $library $threads $root_dir
+bash $root_dir/4_pipeline.sh $library $root_dir 150 0.01 150 0.05
+```
+
+**The analysis outputs will be saved in the** `archr`, `pseudo_ATAC` **and** `pseudo_CUT` **directory.**
+
 
 ## 4_SV_detection
+This part of code performs structural variation (SV) detection per cell.
+
+### Run for individual cell
+```
+bash $root_dir/cuteSV.sh $library $cell $threads $root_dir
+```
+**The commands for parallel run are identical to those described above.**  
+**The analysis outputs will be saved in the** `cutesv` **directory.**
+
 
 ## 5_CNV_detection
+This part of code performs copy number variation (CNV) detection per cell.
+
+### Run for individual cell
+```
+bash $root_dir/freec.sh $library $cell $root_dir
+```
+**The commands for parallel run are identical to those described above.**  
+**The analysis outputs will be saved in the** `freec` **directory.**
+
+# Expected output
+All analysis results will be saved in subdirectories under the `root_dir` directory.
+
+<details>
+<summary>See example output</summary>
+
+```
+├── raw_data
+│   └── test
+|      └── test.pass.fastq.gz
+├── barcode
+|   ├── test
+|   |   ├── barcode.fa
+|   |   ├── cell_list
+|   |   ├── inner_barcode.fa
+|   |   ├── log
+|   |   ├── outer_barcode.fa
+|   |   └── unclassified.fastq
+|   ├── Rep1
+|   |   ├── 1_10.fastq
+|   |   ├── 1_11.fastq
+|   |   ├── cell_list
+|   |   ├── Findex.fa
+|   |   ├── index.fa
+|   |   ├── index_list
+|   |   ├── log
+|   |   ├── Rindex.fa
+|   |   └── unclassified.fastq
+|   └── Rep2
+|       ├── 9_10.fastq
+|       ├── 9_11.fastq
+|       ├── cell_list
+|       ├── Findex.fa
+|       ├── index.fa
+|       ├── index_list
+|       ├── log
+|       ├── Rindex.fa
+|       └── unclassified.fastq
+├── trim
+|   ├── Rep1
+|   |   ├── Rep1.1_10.all_trimed.fq.gz
+|   |   ├── Rep1.1_10.trimed.fq.gz
+|   |   ├── Rep1.1_11.all_trimed.fq.gz
+|   |   ├── Rep1.1_11.trimed.fq.gz
+|   |   └── log
+|   └── Rep2
+├── alignment
+|   ├── Rep1
+|   |   ├── Rep1.1_10.barcode.bam
+|   |   ├── Rep1.1_10.barcode.bam.bai
+|   |   ├── Rep1.1_10.mapQ30.bam
+|   |   ├── Rep1.1_10.mapQ30.rmdup.sorted.bam
+|   |   ├── Rep1.1_10.mapQ30.rmdup.sorted.bam.bai
+|   |   ├── Rep1.1_10.mapQ30.sorted.bam
+|   |   ├── Rep1.1_10.mapQ30.sorted.bam.bai
+|   |   └── log
+|   └── Rep2
+├── fragment
+|   ├── Rep1
+|   |   ├── Rep1.1_10.bed
+|   |   ├── Rep1.1_10.flank.bed
+|   |   └── log
+|   ├── Rep1.fragments.sorted.bed.gz
+|   ├── Rep1.fragments.sorted.bed.gz.tbi
+|   ├── Rep1.I5.sorted.bed.gz
+|   ├── Rep1.I5.sorted.bed.gz.tbi
+|   ├── Rep1.I7.sorted.bed.gz
+|   ├── Rep1.I7.sorted.bed.gz.tbi
+|   └── Rep2
+├── pool
+|   ├── Rep1.fragments.sorted.bed.gz
+|   ├── Rep1.fragments.sorted.bed.gz.tbi
+|   ├── Rep1.I5.sorted.bed.gz
+|   ├── Rep1.I5.sorted.bed.gz.tbi
+|   ├── Rep1.I7.sorted.bed.gz
+|   └── Rep1.I7.sorted.bed.gz.tbi
+├── archr
+|   ├── Rep1
+|   |   ├── ArchRLogs
+|   |   ├── log
+|   |   ├── QualityControl
+|   |   └── tmp
+|   └── Rep1.arrow
+├── pseudo_ATAC
+|   └── MACS2
+|       └── Rep1
+|           ├── Rep1.I7.sorted.bed.gz
+|           ├── log
+|           └── MACS_default
+|               ├── all_control_lambda.bdg
+|               ├── all_peaks.narrowPeak
+|               ├── all_peaks.xls
+|               ├── all_summits.bed
+|               ├── all_treat_pileup.bdg
+|               ├── chr_peaks.narrowPeak
+|               ├── chr_peaks.narrowPeak.gz
+|               └── run.log
+├── pseudo_CUT
+|   └── SEACR
+|       └── Rep1
+|           ├── Rep1.I5.sorted.bed.gz
+|           ├── log
+|           └── stringent
+|               ├── all_SEACR.peak.stringent.bed
+|               ├── chr_SEACR.peak.stringent.bed
+|               ├── chr_SEACR.peak.stringent.bed.gz
+|               ├── Rep1.bedgraph
+|               └── run.log
+├── cutesv
+|   └── 1r
+|       └── Rep1
+|           ├── Rep1.1_10.cuteSV.ONT.vcf
+|           ├── Rep1.1_11.cuteSV.ONT.vcf
+|           └── log
+└── freec
+    └── Rep1
+        ├── 1_10.conf
+        ├── Rep1.1_10.bam.bai
+        ├── Rep1.1_10.bam_info.txt
+        ├── Rep1.1_10.bam_ratio.txt
+        ├── Rep1.1_10.bam
+        ├── Rep1.1_10.bam_CNVs
+        ├── Rep1.1_10.bam_ratio.BedGraph
+        ├── Rep1.1_10.bam_sample.cpn
+        └── log
+```
+</details>
+
+# Demo data
+A small dataset of scNanoCT&ATAC-seq and other example input files are provided in the `example_data` directory.
 
 # Contact
-Please go to the issues page for help or contact with us directly by Xiaoying Fan (fan_xiaoying@gzlab.ac.cn) and Zhixiang Zuo (zuozhx@sysucc.org.cn).
+Please go to the [issues page][issue] for help or contact with us directly by Xiaoying Fan (fan_xiaoying@gzlab.ac.cn) and Zhixiang Zuo (zuozhx@sysucc.org.cn).
+
+[issue]: https://github.com/canceromics/scNanoCT-ATAC-seq/issues
